@@ -101,8 +101,8 @@
         </div>
 
         <div v-show="!showCustomList && !showCalendar" style="margin: auto">
-          <img v-if="darkTheme" src="img/WeekToDoDarkLogo.webp" />
-          <img v-else src="img/WeekToDoLightLogo.webp" />
+          <img v-if="darkTheme" src="/img/WeekToDoDarkLogo.webp" />
+          <img v-else src="/img/WeekToDoLightLogo.webp" />
         </div>
       </div>
 
@@ -144,6 +144,11 @@
 
       <toast-message id="copiedAddress" :text="$t('donate.copiedAddres')"></toast-message>
     </div>
+    <button v-if="syncStatus" class="btn btn-sm btn-light position-fixed top-0 end-0 m-2 sync-status"
+      type="button" @click="syncNow" :title="syncError || 'Synchronize now'">
+      <i :class="syncStatus === 'syncing' ? 'bi-arrow-repeat' : syncStatus === 'synced' ? 'bi-cloud-check' : 'bi-cloud-slash'"></i>
+      {{ syncStatus }}
+    </button>
   </div>
   <div v-if="!compatible" class="compatible d-flex flex-column justify-content-center align-items-center p-5">
     <i class="bi-exclamation-diamond mb-4" style="font-size: 100px"></i>
@@ -168,7 +173,7 @@ import tipsModal from "./views/tipsModal";
 import { Modal, Toast } from "bootstrap";
 import migrations from "./migrations/migrations";
 import version_json from "../public/version.json";
-import isElectron from "is-electron";
+import desktop, { isDesktop } from "./helpers/desktop";
 import taskHelper from "./helpers/tasksHelper";
 import notifications from "./helpers/notifications";
 import clearDataModal from "./components/comfirmModals/clearDataModal.vue";
@@ -181,6 +186,8 @@ import ReorderCustomListsModal from "./views/ReorderCustomListsModal.vue";
 import toastMessage from "./components/toastMessage";
 import activeToDo from "./components/activeToDo.vue";
 import tasksHelper from "./helpers/tasksHelper";
+import axios from "axios";
+import { registerServiceWorker } from "./helpers/serviceWorker";
 
 export default {
   name: "App",
@@ -208,10 +215,12 @@ export default {
       selected_date: null,
       cTodoList: this.$store.getters.cTodoListIds,
       calendarHeight: "calc(50% - 50px)",
-      ipcRenderer: null,
       initialLoadCompleted: false,
       initialListToLoad: 0,
       initialListLoaded: 0,
+      applyWebUpdate: null,
+      syncStatus: null,
+      syncError: null,
     };
   },
   beforeCreate() {
@@ -242,6 +251,11 @@ export default {
     );
   },
   mounted() {
+    this.syncStateListener = (event) => {
+      this.syncStatus = event.detail.status;
+      this.syncError = event.detail.error;
+    };
+    window.addEventListener("weektodo:sync-state", this.syncStateListener);
     this.$refs.weekListContainer.scrollLeft = this.todoListWidth();
     this.calendarHeight = this.$store.getters.config.calendarHeight;
     window.addEventListener("resize", this.weekResetScroll);
@@ -251,24 +265,35 @@ export default {
       }
     };
 
-    if (isElectron()) {
-      const { ipcRenderer } = require("electron");
-      this.ipcRenderer = ipcRenderer;
-      if (this.$store.getters.config.firstTimeOpen) this.ipcRenderer.send("show-current-window");
-      this.ipcRenderer.send("match-open-on-startup", this.$store.getters.config.openOnStartup);
+    if (isDesktop()) {
+      if (this.$store.getters.config.firstTimeOpen) desktop.showCurrentWindow();
+      desktop.matchOpenOnStartup(this.$store.getters.config.openOnStartup);
     }
 
     if (this.$store.getters.config.importing) {
       this.$store.commit("updateConfig", { val: false, key: "importing" });
       configRepository.update(this.$store.getters.config);
-      if (isElectron()) {
+      if (isDesktop()) {
         this.syncElectronConfig();
       }
     }
 
     this.resetAppOnDayChange();
+    registerServiceWorker({
+      onUpdateAvailable: (applyUpdate) => {
+        this.applyWebUpdate = applyUpdate;
+        new Toast(document.getElementById("newVersionAvailable")).show();
+      },
+    });
+  },
+  beforeUnmount() {
+    window.removeEventListener("resize", this.weekResetScroll);
+    if (this.syncStateListener) window.removeEventListener("weektodo:sync-state", this.syncStateListener);
   },
   methods: {
+    syncNow: function () {
+      window.dispatchEvent(new Event("weektodo:sync-now"));
+    },
     weekMoveLeft: function () {
       this.selected_date = moment(this.selected_date).subtract(1, "d").format("YYYYMMDD");
       this.$refs.weekListContainer.scrollLeft = this.todoListWidth() * 2;
@@ -326,12 +351,11 @@ export default {
       });
     },
     isElectron: function () {
-      let isElectron = require("is-electron");
-      return isElectron();
+      return isDesktop();
     },
     hideSplash: function () {
       if (this.isElectron()) {
-        if (this.ipcRenderer.sendSync("is-windows-visible")) {
+        if (desktop.isWindowVisible()) {
           this.$refs.splash.hideSplash();
         }
       } else {
@@ -398,11 +422,11 @@ export default {
               this.refreshTodayNotifications();
               this.$store.commit("updateConfig", { val: moment().format("YYYYMMDD"), key: "lastDayOpened" });
               configRepository.update(this.$store.getters.config);
-              if (isElectron()) this.showInitialNotification();
+              if (isDesktop()) this.showInitialNotification();
             });
           } else {
             this.refreshTodayNotifications();
-            if (isElectron()) this.showInitialNotification();
+            if (isDesktop()) this.showInitialNotification();
             this.$store.commit("updateConfig", { val: moment().format("YYYYMMDD"), key: "lastDayOpened" });
             configRepository.update(this.$store.getters.config);
           }
@@ -418,7 +442,7 @@ export default {
             icon: "/favicon.ico",
             silent: true,
           }).onclick = () => {
-            this.ipcRenderer.send("show-current-window");
+            desktop.showCurrentWindow();
             setTimeout(() => {
               if (document.getElementById("splashScreen")) {
                 document.getElementById("splashScreen").classList.add("hiddenSplashScreen");
@@ -454,7 +478,7 @@ export default {
 
       setTimeout(
         function () {
-          if (isElectron() && !this.ipcRenderer.sendSync("is-windows-visible")) {
+          if (isDesktop() && !desktop.isWindowVisible()) {
             window.location.reload();
           }
           this.refreshTodayNotifications();
@@ -508,8 +532,7 @@ export default {
       }
     },
     checkForUpdates: function () {
-      if (this.isElectron() && this.$store.getters.config.checkUpdates) {
-        const axios = require("axios").default;
+      if (isDesktop() && this.$store.getters.config.checkUpdates) {
         axios
           .get("https://app.weektodo.me/version.json")
           .then((response) => this.showNewVersionToast(response))
@@ -517,8 +540,8 @@ export default {
       }
     },
     checksOnLoadApp: function () {
-      if (this.isElectron()) {
-        require("electron").ipcRenderer.on("initial-checks", () => {
+      if (isDesktop()) {
+        desktop.onInitialChecks(() => {
           this.checkVersion();
           this.checkForUpdates();
         });
@@ -533,9 +556,12 @@ export default {
       }
     },
     downloadNewVersion: function () {
-      let isElectron = require("is-electron");
-      if (isElectron()) {
-        require("electron").shell.openExternal("https://weektodo.me", "_blank");
+      if (this.applyWebUpdate) {
+        this.applyWebUpdate();
+        return;
+      }
+      if (isDesktop()) {
+        desktop.openExternal("https://weektodo.me");
       } else {
         window.open("https://weektodo.me", "_blank");
       }
@@ -544,11 +570,10 @@ export default {
       window.open("https://weektodo.me/changelog", "_blank");
     },
     syncElectronConfig: function () {
-      const { ipcRenderer } = require("electron");
-      ipcRenderer.send("set-tray-context-menu-label", { open: this.$t("ui.open"), quit: this.$t("ui.quit") });
-      ipcRenderer.send("set-open-on-startup", this.$store.getters.config.openOnStartup);
-      ipcRenderer.send("set-run-in-background", this.$store.getters.config.runInBackground);
-      ipcRenderer.send("set-dark-tray-icon", this.$store.getters.config.darkTrayIcon);
+      desktop.setTrayLabels({ open: this.$t("ui.open"), quit: this.$t("ui.quit") });
+      desktop.setOpenOnStartup(this.$store.getters.config.openOnStartup);
+      desktop.setRunInBackground(this.$store.getters.config.runInBackground);
+      desktop.setDarkTrayIcon(this.$store.getters.config.darkTrayIcon);
     },
   },
   computed: {
@@ -630,7 +655,7 @@ export default {
 </script>
 
 <style lang="scss">
-@import "/src/assets/style/globalVars.scss";
+@use "/src/assets/style/globalVars.scss" as *;
 
 body {
   line-height: unset !important;
@@ -765,6 +790,11 @@ body {
 .hidden-input-for-focus {
   position: absolute;
   top: -100px;
+}
+
+.sync-status {
+  z-index: 1055;
+  text-transform: capitalize;
 }
 
 .main-horizontal-divider {

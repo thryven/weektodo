@@ -1,4 +1,4 @@
-@import "globalVars";
+@use "globalVars" as *;
 //------------------------------------------dropdown-menu--------------------------------------------------
 .dropdown-menu {
   border-radius: 7px;

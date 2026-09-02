@@ -28,7 +28,7 @@ export default {
   removeGeneratedRepeatingEvents(listId, vue) {
     vue.$store.getters.todoLists[listId].forEach((todo, index) => {
       if (todo.repeatingEvent && !vue.$store.getters.repeatingEventList[todo.repeatingEvent]) {
-        if (moment(todo.listId).isBefore(Date(), "day")) {
+        if (moment(todo.listId, "YYYYMMDD", true).isBefore(moment(), "day")) {
           todo.repeatingEvent = null;
         } else {
           vue.$store.commit("removeTodo", {

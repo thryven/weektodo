@@ -27,14 +27,14 @@ If you want to understand how WeekToDo works or want to debug an issue, you'll w
 
 ## Installing Prerequisites
 
-You'll need git, a recent version of [Node.JS](https://nodejs.org/en/) (currently v16.X is recommended), [Yarn](https://yarnpkg.com/) and [Electron](https://www.electronjs.org/).
+You'll need Git, Node.js 22.12 or newer, [pnpm](https://pnpm.io/), and [Electron](https://www.electronjs.org/).
 
 ```
 git clone https://github.com/manuelernestog/weektodo
 cd weektodo
-yarn install
-yarn run serve // to run web version
-yarn run electron:serve // to run native version
+pnpm install
+pnpm run dev // to run the web version
+pnpm run electron:serve // to run the native version
 ```
 
 # Where to Contribute

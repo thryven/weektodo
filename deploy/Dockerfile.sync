@@ -1,0 +1,9 @@
+FROM node:22-alpine
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --ignore-scripts
+COPY server ./server
+COPY src/sync ./src/sync
+USER node
+CMD ["pnpm", "server:start"]

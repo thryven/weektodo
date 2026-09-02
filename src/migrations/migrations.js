@@ -36,7 +36,7 @@ function configCalendarZoomColumnsCalendarHeight() {
 
 function configNotifications() {
   let config = configRepository.load();
-  if (!("startupNotification" in config)) {
+  if (!("notificationOnStartup" in config)) {
     config["notificationOnStartup"] = true;
     config["notificationSound"] = "pop";
     config["openOnStartup"] = true;

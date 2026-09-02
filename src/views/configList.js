@@ -1,6 +1,10 @@
 export default {
     configList(vue) {
         return [
+            { name: "Local network sync", ico: "bi-hdd-network", linktype: "tagId", link: "config-local-sync-tab" },
+            ...(import.meta.env.VITE_SYNC_ENABLED === "true" ? [{
+              name: "Sync", ico: "bi-cloud", linktype: "tagId", link: "config-sync-tab",
+            }] : []),
             {
               name: vue.$t('settings.general'),
               ico: "bi-sliders",

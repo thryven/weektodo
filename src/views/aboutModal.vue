@@ -55,7 +55,7 @@
                   <div class="col-md-3">
                     <img
                       class="align-self-center"
-                      src="Avatar.webp"
+                      src="/Avatar.webp"
                       alt="Manuel Ernesto Garcia"
                       title="Manuel Ernesto Garcia"
                       width="64"

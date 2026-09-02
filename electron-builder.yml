@@ -1,0 +1,33 @@
+appId: weektodo-app.netlify.app
+productName: WeekToDo
+directories:
+  output: dist_electron
+  buildResources: public
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - '!node_modules/**/*'
+extraMetadata:
+  main: dist-electron/main.js
+publish:
+  - github
+linux:
+  category: Utility
+  description: Free and Open Source Minimalist Weekly Planner and To Do list App focused on privacy.
+  target:
+    - deb
+    - rpm
+    - pacman
+    - AppImage
+  icon: icon.png
+win:
+  target:
+    - nsis
+  icon: icon.png
+mac:
+  category: public.app-category.productivity
+  target:
+    - dmg
+    - pkg
+  icon: icon.png

@@ -11,14 +11,14 @@
           <img
             v-if="darkTheme"
             class="logo"
-            src="../../public/img/weektodo-isologo-white.svg"
+            src="/img/weektodo-isologo-white.svg"
             alt="WeekToDo Logo"
             style="display: inline"
           />
           <img
             v-else
             class="logo"
-            src="../../public/img/weektodo-isologo-color.svg"
+            src="/img/weektodo-isologo-color.svg"
             alt="WeekToDo Logo"
             style="display: inline"
           />
@@ -41,6 +41,7 @@
 </template>
 
 <script>
+import axios from "axios";
 export default {
   name: "splashScreen",
   data() {
@@ -51,7 +52,6 @@ export default {
     };
   },
   mounted() {
-    const axios = require("axios").default;
     axios
       .get("https://weektodo.me/api/sponsors")
       .then((response) => this.renderSponsor(response))

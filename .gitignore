@@ -3,8 +3,10 @@ node_modules
 /dist
 
 # local env files
+.env
 .env.local
 .env.*.local
+.env.sync
 
 # Log files
 npm-debug.log*
@@ -18,5 +20,7 @@ pnpm-debug.log*
 
 #Electron-builder output
 /dist_electron
+/dist-electron
 
-.env
+.agents/
+.pnpm-store/

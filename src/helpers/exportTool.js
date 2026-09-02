@@ -2,12 +2,14 @@ import storageRepository from "../repositories/storageRepository";
 import dbRepository from "../repositories/dbRepository";
 import { Toast, Modal } from "bootstrap";
 import migrations from "../migrations/migrations";
-import isElectron from "is-electron";
+import desktop, { isDesktop } from "./desktop";
+import { parseBackup, serializeBackup } from "./backupFormat";
 
 export default {
   export() {
     var filename = "WeekToDoBackup.wtdb";
     var data = storageRepository.as_json();
+    data.backupVersion = 2;
     data.todoLists = {};
     data.repeating_events = {};
     data.repeating_events_by_date = {};
@@ -29,41 +31,27 @@ export default {
   },
   import(event) {
     let fr = readFile(event.target.files);
-    fr.onload = function () {
+    fr.onload = async function () {
       var toast = new Toast(document.getElementById("invalidFile"));
       try {
-        var data = JSON.parse(fr.result);
-        if ("config" in data) {
-          importData(data);
-          migrations.migrate();
-        } else {
-          toast.show();
-        }
-      } catch (e) {
+        await importData(parseBackup(fr.result));
+        migrations.migrate();
+        location.reload();
+      } catch {
         toast.show();
       }
     };
   },
   clear() {
-    if (isElectron()) {
-      const { ipcRenderer } = require("electron");
-      ipcRenderer.send("clear-config");
+    if (isDesktop()) {
+      desktop.clearDesktopConfig();
     }
 
     storageRepository.clean();
     let db_req = dbRepository.open();
     db_req.onsuccess = function (event) {
       var db = event.target.result;
-      let request = dbRepository.clear(db, "todo_lists");
-      request.onsuccess = function () {
-        let request2 = dbRepository.clear(db, "repeating_events");
-        request2.onsuccess = function () {
-          let request3 = dbRepository.clear(db, "repeating_events_by_date");
-          request3.onsuccess = function () {
-            location.reload();
-          };
-        };
-      };
+      const transaction=dbRepository.clearApplicationData(db);transaction.oncomplete=()=>{db.close();location.reload();};
     };
   },
 };
@@ -91,7 +79,7 @@ function getRepeatinEventByDateData(filename, data, event) {
       data.repeating_events_by_date[cursor.key] = cursor.value;
       cursor.continue();
     } else {
-      let string_data = JSON.stringify(data);
+      let string_data = serializeBackup(data);
       createExportLink(filename, string_data);
     }
   };
@@ -122,68 +110,14 @@ function readFile(files) {
 }
 
 function importData(data) {
-  importLocalStorageData(data);
-  importIndexedDbData(data, "todo_lists");
+  return new Promise((resolve,reject)=>{const request=dbRepository.open();request.onerror=()=>reject(request.error);
+    request.onsuccess=(event)=>{const db=event.target.result;const transaction=dbRepository.importBackup(db,data);
+      transaction.oncomplete=()=>{db.close();importLocalStorageData(data);resolve();};
+      transaction.onerror=()=>{db.close();reject(transaction.error);};transaction.onabort=()=>{db.close();reject(transaction.error);};};});
 }
 
 function importLocalStorageData(data) {
   storageRepository.clean();
-  var configData = JSON.parse(data.config);
-  configData.importing = true;
-  data.config = JSON.stringify(configData)
   storageRepository.load_json(data);
 }
 
-function importIndexedDbData(a_data, table) {
-  var data = a_data;
-  let db_req = dbRepository.open();
-  db_req.onsuccess = function (event) {
-    let db = event.target.result;
-    let request = dbRepository.clear(db, table);
-    request.onsuccess = function () {
-      importDbRecords(db, data, table);
-    };
-  };
-}
-
-function importDbRecords(db, data_a, table) {
-  var keys, data;
-
-  if (table == "todo_lists") {
-    keys = Object.keys(data_a.todoLists);
-    data = data_a.todoLists;
-  } else if (table == "repeating_events") {
-    if (!('repeating_events' in data_a)) location.reload(); // if not exist is an old data, finish the import and reload
-    keys = Object.keys(data_a.repeating_events);
-    data = data_a.repeating_events;
-  } else {
-    keys = Object.keys(data_a.repeating_events_by_date);
-    data = data_a.repeating_events_by_date;
-  }
-
-  var i = keys.length;
-  var req;
-
-  if (i == 0) {
-    if (table == "todo_lists") {
-      importIndexedDbData(data_a, "repeating_events");
-    } else if (table == "repeating_events") {
-      importIndexedDbData(data_a, "repeating_events_by_date");
-    } else {
-      location.reload();
-    }
-  } else {
-    while (i--) {
-      req = dbRepository.add(db, table, keys[i], data[keys[i]]);
-    }
-    req.onsuccess = function () {
-      if (table == "todo_lists") {
-        importIndexedDbData(data_a, "repeating_events");
-      } else if (table == "repeating_events") {
-        importIndexedDbData(data_a, "repeating_events_by_date");
-      } else {
-        location.reload();
-      }
-    };
-  }
-}

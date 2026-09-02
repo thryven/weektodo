@@ -14,7 +14,7 @@ export default {
     as_json(){
         var values = {}, keys = Object.keys(localStorage), i = keys.length;
         while (i--) {
-            values[keys[i]] = localStorage.getItem(keys[i]);
+            if (!keys[i].startsWith("weektodo.pending-local-write.")) values[keys[i]] = localStorage.getItem(keys[i]);
         }
         return values;
     },

@@ -9,6 +9,13 @@
         </div>
         <div class="modal-body px-0" style="display: flex">
           <ul class="nav nav-tabs" id="confTab" role="tablist" style="display: none">
+            <li class="nav-item" role="presentation"><button class="nav-link" id="config-local-sync-tab" data-bs-toggle="tab"
+              data-bs-target="#config-local-sync" role="tab">Local network sync</button></li>
+            <li class="nav-item" role="presentation">
+              <button v-if="syncEnabled" class="nav-link" id="config-sync-tab" data-bs-toggle="tab" data-bs-target="#config-sync" role="tab">
+                Sync
+              </button>
+            </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="config-home-tab" data-bs-toggle="tab" data-bs-target="#config-home"
                 role="tab">
@@ -297,6 +304,8 @@
                 </div>
               </div>
             </div>
+            <div v-if="syncEnabled" class="tab-pane fade" id="config-sync"><sync-account-panel /></div>
+            <div class="tab-pane fade" id="config-local-sync"><local-network-sync-panel @export-recovery="exportData" /></div>
             <div class="tab-pane fade" id="config-language">
               <div class="d-flex flex-column mt-2 h-100">
                 <label for="language" class="form-label">{{ $t("settings.language") }}:</label>
@@ -341,16 +350,20 @@ import linkList from "../components/linkList";
 import configList from "./configList";
 import notifications from "../helpers/notifications";
 import { Modal } from "bootstrap";
+import desktop, { isDesktop } from "../helpers/desktop";
+import syncAccountPanel from "./syncAccountPanel";
+import localNetworkSyncPanel from "./localNetworkSyncPanel";
 
 export default {
   name: "configModal",
-  components: { toastMessage, linkList },
+  components: { toastMessage, linkList, syncAccountPanel,localNetworkSyncPanel },
   props: {
     configProp: { required: true },
   },
   data() {
     return {
       configData: this.$store.getters.config,
+      syncEnabled: import.meta.env.VITE_SYNC_ENABLED === "true",
     };
   },
   methods: {
@@ -384,8 +397,7 @@ export default {
       exportTool.import(event);
     },
     isElectron: function () {
-      let isElectron = require("is-electron");
-      return isElectron();
+      return isDesktop();
     },
     goHome: function () {
       document.getElementById("config-home-tab").click();
@@ -394,8 +406,7 @@ export default {
       this.changeConfig("openOnStartup", this.configData.openOnStartup);
       this.$nextTick(function () {
         if (this.isElectron()) {
-          const { ipcRenderer } = require('electron');
-          ipcRenderer.send('set-open-on-startup', this.configData.openOnStartup);
+          desktop.setOpenOnStartup(this.configData.openOnStartup);
         }
       });
     },
@@ -403,8 +414,7 @@ export default {
       this.changeConfig("runInBackground", this.configData.runInBackground);
       this.$nextTick(function () {
         if (this.isElectron()) {
-          const { ipcRenderer } = require('electron');
-          ipcRenderer.send('set-run-in-background', this.configData.runInBackground);
+          desktop.setRunInBackground(this.configData.runInBackground);
         }
       });
     },
@@ -412,8 +422,7 @@ export default {
       this.changeConfig('language', this.configData.language);
       this.$nextTick(function () {
         if (this.isElectron()) {
-          const { ipcRenderer } = require('electron');
-          ipcRenderer.send('set-tray-context-menu-label', { open: this.$t("ui.open"), quit: this.$t("ui.quit") });
+          desktop.setTrayLabels({ open: this.$t("ui.open"), quit: this.$t("ui.quit") });
         }
       });
     },
@@ -423,8 +432,7 @@ export default {
     setDarkTrayIcon: function () {
       this.changeConfig('darkTrayIcon', this.configData.darkTrayIcon);
       this.$nextTick(function () {
-        const { ipcRenderer } = require('electron');
-        ipcRenderer.send('set-dark-tray-icon', this.configData.darkTrayIcon);
+        desktop.setDarkTrayIcon(this.configData.darkTrayIcon);
       });
     },
     playSound: function () {
@@ -447,7 +455,7 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import "../assets/style/globalVars";
+@use "../assets/style/globalVars" as *;
 
 .form-check-input {
   width: 2.8em !important;

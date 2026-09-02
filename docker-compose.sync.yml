@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: weektodo
+      POSTGRES_USER: weektodo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - sync_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weektodo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.sync
+    command: ["pnpm", "server:migrate"]
+    environment:
+      DATABASE_URL: postgres://weektodo:${POSTGRES_PASSWORD}@postgres:5432/weektodo
+      DATABASE_SSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  sync-api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.sync
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://weektodo:${POSTGRES_PASSWORD}@postgres:5432/weektodo
+      DATABASE_SSL: "false"
+      HOST: 0.0.0.0
+      PORT: 3000
+      NODE_ENV: production
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL}
+      VERIFICATION_WEBHOOK_URL: ${VERIFICATION_WEBHOOK_URL}
+      VERIFICATION_WEBHOOK_AUTHORIZATION: ${VERIFICATION_WEBHOOK_AUTHORIZATION}
+      AUDIT_HASH_KEY: ${AUDIT_HASH_KEY:?set AUDIT_HASH_KEY}
+      LAN_DISCOVERY_ENABLED: ${LAN_DISCOVERY_ENABLED:-false}
+      PUBLIC_SYNC_URL: ${PUBLIC_SYNC_URL:?set PUBLIC_SYNC_URL}
+      LAN_HOST_NAME: ${LAN_HOST_NAME:-WeekToDo}
+    ports:
+      - "48161:48161/udp"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://127.0.0.1:3000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SYNC_DOMAIN: ${SYNC_DOMAIN:?set SYNC_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      sync-api:
+        condition: service_healthy
+
+volumes:
+  sync_postgres:
+  caddy_data:
+  caddy_config:

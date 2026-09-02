@@ -1,6 +1,12 @@
 import storageRepository from "./storageRepository";
 import version_json from "../../public/version.json";
 import moment from "moment";
+import { createSyncOperation } from "../sync/syncModel";
+import { prepareSharedSettings, sharedSettings } from "../sync/syncSettings";
+import { getDeviceId } from "../sync/deviceIdentity";
+import { commitLocalDocument } from "./localDocumentSyncRepository";
+
+const SETTINGS_METADATA_KEY = "syncSharedSettingsMetadata";
 
 export default {
   load() {
@@ -45,6 +51,15 @@ export default {
     }
   },
   update(config) {
-    storageRepository.set("config", config);
+    const previous = storageRepository.get("config");
+    const metadata = storageRepository.get(SETTINGS_METADATA_KEY);
+    const prepared = prepareSharedSettings(config, previous, metadata);
+    storageRepository.set(SETTINGS_METADATA_KEY, prepared._sync);
+    if (!previous || prepared._sync.localRevision !== metadata?.localRevision) {
+      return commitLocalDocument("config",config,[
+        createSyncOperation("settings", prepared, "upsert", undefined, getDeviceId(),previous ? {...sharedSettings(previous),_sync:metadata} : null),
+      ]);
+    }
+    storageRepository.set("config",config);return Promise.resolve(true);
   },
 };

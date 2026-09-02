@@ -1,4 +1,6 @@
 import dbRepository from "../../repositories/dbRepository";
+import { createSyncOperation,prepareTaskList } from "../../sync/syncModel";
+import { getDeviceId } from "../../sync/deviceIdentity";
 
 const state = {
   todoLists: {},
@@ -88,7 +90,11 @@ const actions = {
         get_req.onsuccess = function (event) {
           let todoList = event.target.result;
           if (todoList) {
-            commit("loadTodoLists", { todoListId: todoListId, todoList: todoList });
+            const prepared=prepareTaskList(todoList,event.target.result);commit("loadTodoLists", { todoListId: todoListId, todoList: prepared.tasks });
+            const operations=prepared.changed.map((task)=>createSyncOperation("task",task,"upsert",undefined,getDeviceId(),
+              prepared.baseById.get(task._sync.id)));
+            if(operations.length)dbRepository.updateWithOutbox(db,"todo_lists",todoListId,prepared.tasks,operations);
+            else dbRepository.update(db, "todo_lists", todoListId, prepared.tasks);
           } else {
             commit("loadTodoLists", { todoListId: todoListId, todoList: [] });
             dbRepository.add(db, "todo_lists", todoListId, []);

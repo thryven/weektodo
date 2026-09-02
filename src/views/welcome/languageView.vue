@@ -1,7 +1,7 @@
 <template>
   <div class="row">
     <div class="col-md-4">
-      <img class="logo info-image" src="WeekToDo-Logo-Color.svg" alt="WeekToDo" title="WeekToDo Logo" width="110" />
+      <img class="logo info-image" src="/WeekToDo-Logo-Color.svg" alt="WeekToDo" title="WeekToDo Logo" width="110" />
     </div>
     <div class="col-md-8">
       <div>
@@ -52,13 +52,14 @@
 
 <script>
 import configRepository from "../../repositories/configRepository";
+import desktop, { isDesktop } from "../../helpers/desktop";
 
 export default {
   name: "languageView",
   data() {
     return {
       language: this.$store.getters.config.language,
-      isElectron: require("is-electron"),
+      isElectron: isDesktop,
     };
   },
   methods: {
@@ -69,8 +70,7 @@ export default {
         this.$i18n.locale = this.language;
 
         if (this.isElectron()) {
-          const { ipcRenderer } = require("electron");
-          ipcRenderer.send("set-tray-context-menu-label", { open: this.$t("ui.open"), quit: this.$t("ui.quit") });
+          desktop.setTrayLabels({ open: this.$t("ui.open"), quit: this.$t("ui.quit") });
         }
       });
     },

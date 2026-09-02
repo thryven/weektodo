@@ -1,4 +1,4 @@
-@import "globalVars";
+@use "globalVars" as *;
 
 body {
   color: $text-color;

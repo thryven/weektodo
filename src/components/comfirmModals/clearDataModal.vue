@@ -6,6 +6,7 @@
 <script>
 import comfirmModal from "../../components/comfirmModal.vue";
 import exportTool from "../../helpers/exportTool";
+import desktop, { isDesktop } from "../../helpers/desktop";
 
 export default {
   name: "clearDataModal",
@@ -14,11 +15,9 @@ export default {
   },
   methods: {
     clearData: function () {
-      let isElectron = require("is-electron");
-      if (isElectron()) {
-        const { ipcRenderer } = require('electron');
-        ipcRenderer.send('set-tray-context-menu-label', { open: 'Open', quit: 'Quit' });
-        ipcRenderer.send('set-dark-tray-icon',false);
+      if (isDesktop()) {
+        desktop.setTrayLabels({ open: "Open", quit: "Quit" });
+        desktop.setDarkTrayIcon(false);
       }
       exportTool.clear();
     },

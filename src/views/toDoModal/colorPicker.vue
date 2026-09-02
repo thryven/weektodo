@@ -75,7 +75,7 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import "/src/assets/style/globalVars.scss";
+@use "/src/assets/style/globalVars.scss" as *;
 
 .header-menu-icons {
   margin-left: 6px;

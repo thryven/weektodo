@@ -13,6 +13,7 @@
 </template>
 
 <script>
+import desktop, { isDesktop } from "../helpers/desktop";
 
     export default {
         name: "donateModal",
@@ -41,9 +42,8 @@
                 window.open(link);
             },
             externaLink: function (link) {
-                let isElectron = require("is-electron");
-                if (isElectron()) {
-                    require('electron').shell.openExternal(link, '_blank');
+                if (isDesktop()) {
+                    desktop.openExternal(link);
                 } else {
                     window.open(link, '_blank');
                 }

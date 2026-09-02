@@ -1,0 +1,23 @@
+name: Vercel function gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  linux-function-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm server:function:verify
+      - run: pnpm test -- api/index.test.js server/app.test.js server/runtime.test.js server/vercelRuntime.integration.test.js
+      - run: pnpm build

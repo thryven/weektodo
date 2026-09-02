@@ -45,6 +45,7 @@
 
 <script>
 import configRepository from "../../repositories/configRepository";
+import desktop from "../../helpers/desktop";
 
 export default {
   name: "languageView",
@@ -57,16 +58,14 @@ export default {
   methods: {
     setOpenOnStart: function () {
       this.$nextTick(function () {
-        const { ipcRenderer } = require('electron');
-        ipcRenderer.send('set-open-on-startup', this.openOnStartup);
+        desktop.setOpenOnStartup(this.openOnStartup);
         this.$store.commit('updateConfig', { val: this.openOnStartup, key: "openOnStartup" });
         configRepository.update(this.$store.getters.config);
       });
     },
     setRunInBackground: function () {
       this.$nextTick(function () {
-        const { ipcRenderer } = require('electron');
-        ipcRenderer.send('set-run-in-background', this.runInBackground);
+        desktop.setRunInBackground(this.runInBackground);
         this.$store.commit('updateConfig', { val: this.runInBackground, key: "runInBackground" });
         configRepository.update(this.$store.getters.config);
       });

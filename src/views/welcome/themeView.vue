@@ -33,7 +33,7 @@
 
 <script>
 import configRepository from "../../repositories/configRepository";
-import isElectron from "is-electron";
+import { isDesktop } from "../../helpers/desktop";
 
 export default {
   name: "languageView",
@@ -50,7 +50,7 @@ export default {
       });
     },
     next: function () {
-      if (isElectron()) {
+      if (isDesktop()) {
         document.getElementById('welcome-2-1-tab').click();
       } else {
         document.getElementById('welcome-3-tab').click();
