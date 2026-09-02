@@ -82,9 +82,6 @@ describe("authenticated sync API", () => {
     const ready=await app.inject({method:"GET",url:"/health/ready"});expect(ready.statusCode).toBe(503);
     expect(ready.json()).toEqual({status:"not_ready",reason:"migrations_pending"});await app.close();
   });
-  it("advertises a versioned, non-secret discovery document",async()=>{const app=await buildServer();
-    const response=await app.inject({method:"GET",url:"/.well-known/weektodo-sync"});expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({service:"weektodo-sync",protocolVersion:1,name:"WeekToDo"});await app.close();});
   it("passes request cancellation to notification polling",async()=>{
     const repository=new InMemoryIdentityRepository();let receivedSignal;
     const notificationHub={publish:()=>{},wait:vi.fn(async(_workspaceId,_after,{signal})=>{receivedSignal=signal;return 7;})};

@@ -52,10 +52,6 @@
       "destination": "/api/index"
     },
     {
-      "source": "/.well-known/weektodo-sync",
-      "destination": "/api/index"
-    },
-    {
       "source": "/:path*",
       "destination": "/index.html"
     }

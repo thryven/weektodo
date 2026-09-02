@@ -3,7 +3,7 @@ import { buildServer } from "./app.mjs";
 import { PostgresIdentityRepository } from "./postgresIdentityRepository.mjs";
 import { PostgresSyncServer } from "./postgresSyncServer.mjs";
 import { PostgresAuditRepository } from "./auditRepository.mjs";
-import { ConsoleVerificationSender, WebhookVerificationSender } from "./verificationSender.mjs";
+import { ConsoleVerificationSender, ResendVerificationSender } from "./verificationSender.mjs";
 import { AuthService } from "./authService.mjs";
 import { databaseReadiness } from "./operationalHealth.mjs";
 import { PostgresNotificationHub } from "./notificationHub.mjs";
@@ -13,9 +13,9 @@ export function resolveRuntimeConfig(env = process.env) {
   const production = env.NODE_ENV === "production";
   const publicAppUrl = env.PUBLIC_APP_URL || (production ? null : "http://localhost:5173");
   if (!env.DATABASE_URL) throw new Error("DATABASE_URL is required");
-  if (production && !env.VERIFICATION_WEBHOOK_URL) {
-    throw new Error("VERIFICATION_WEBHOOK_URL is required in production");
-  }
+  if (production && !env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is required in production");
+  if (production && !env.RESEND_FROM_EMAIL) throw new Error("RESEND_FROM_EMAIL is required in production");
+  if (env.RESEND_API_KEY && !env.RESEND_FROM_EMAIL) throw new Error("RESEND_FROM_EMAIL is required when RESEND_API_KEY is set");
   if (!publicAppUrl) throw new Error("PUBLIC_APP_URL is required in production");
   if (!env.AUDIT_HASH_KEY || env.AUDIT_HASH_KEY.length < 32) {
     throw new Error("AUDIT_HASH_KEY must be at least 32 characters");
@@ -27,8 +27,8 @@ export function resolveRuntimeConfig(env = process.env) {
     databaseSsl: env.DATABASE_SSL === "true",
     databaseSslRejectUnauthorized: env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
     auditHashKey: env.AUDIT_HASH_KEY,
-    verificationWebhookUrl: env.VERIFICATION_WEBHOOK_URL || null,
-    verificationWebhookAuthorization: env.VERIFICATION_WEBHOOK_AUTHORIZATION || null,
+    resendApiKey: env.RESEND_API_KEY || null,
+    resendFromEmail: env.RESEND_FROM_EMAIL || null,
   };
 }
 
@@ -37,9 +37,9 @@ export async function createServerRuntime({ env = process.env, pool: suppliedPoo
   const config = resolveRuntimeConfig(env);
   const pool = suppliedPool || new PoolClass(runtimePoolOptions(env));
   const identityRepository = new PostgresIdentityRepository(pool);
-  const verificationSender = config.verificationWebhookUrl
-    ? new WebhookVerificationSender({ url: config.verificationWebhookUrl, publicAppUrl: config.publicAppUrl,
-      authorization: config.verificationWebhookAuthorization })
+  const verificationSender = config.resendApiKey
+    ? new ResendVerificationSender({ apiKey: config.resendApiKey, from: config.resendFromEmail,
+      publicAppUrl: config.publicAppUrl })
     : new ConsoleVerificationSender({ publicAppUrl: config.publicAppUrl });
   let app;
   try {

@@ -25,6 +25,7 @@ export class SyncAccountClient {
     return this.request("/auth/register",{method:"POST",body:JSON.stringify({email,password,passwordKeyEnvelope,recoveryKeyEnvelope})});
   }
   async verify(token) { return this.request("/auth/verify",{method:"POST",body:JSON.stringify({token})}); }
+  async resendVerification(email) { return this.request("/auth/verification/resend",{method:"POST",body:JSON.stringify({email})}); }
   async login({email,password,deviceName,deviceId}) {
     const result=await this.request("/auth/login",{method:"POST",body:JSON.stringify({email,password,deviceName,deviceId})});
     const accountKey=await unwrapAccountKeyWithPassword(result.passwordKeyEnvelope,password);

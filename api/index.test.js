@@ -36,10 +36,8 @@ describe("Vercel Fastify function", () => {
     const runtimeFactory = vi.fn().mockResolvedValue({ app });
     const handler = createVercelHandler({ runtimeFactory });
     const first = await invoke(handler, { url: "/health/live" });
-    const second = await invoke(handler, { url: "/.well-known/weektodo-sync" });
     expect(first.statusCode, first.body).toBe(200);
     expect(JSON.parse(first.body)).toEqual({ status: "ok" });
-    expect(JSON.parse(second.body)).toMatchObject({ service: "weektodo-sync", protocolVersion: 1 });
     expect(runtimeFactory).toHaveBeenCalledOnce();
     expect(listen).not.toHaveBeenCalled();
     await app.close();

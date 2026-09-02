@@ -66,7 +66,6 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/v1": { target: "http://127.0.0.1:3000" },
         "/health": { target: "http://127.0.0.1:3000" },
-        "/.well-known/weektodo-sync": { target: "http://127.0.0.1:3000" },
       },
     } : undefined,
     resolve: {

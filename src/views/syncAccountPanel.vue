@@ -7,13 +7,28 @@
       <div class="mb-2"><label class="form-label">Password</label><input v-model="password" class="form-control" type="password" minlength="12"></div>
       <div class="mb-3"><label class="form-label">Device name</label><input v-model.trim="deviceName" class="form-control" maxlength="100"></div>
       <div v-if="recoveryKey" class="alert alert-warning">
-        <strong>Save this recovery key now.</strong>
-        <code class="d-block text-break my-2">{{ recoveryKey }}</code>
-        <label><input v-model="recoveryConfirmed" type="checkbox"> I saved it somewhere safe.</label>
+        <strong>Save your recovery key</strong>
+        <p class="small mb-2">You’ll need this key if you lose access to your account. We can’t recover it for you.</p>
+        <code class="d-block text-break bg-white border rounded p-2 mb-2">{{ recoveryKey }}</code>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <button class="btn btn-sm btn-primary" type="button" :disabled="busy" @click="copyKey">
+            <i class="bi bi-clipboard me-1" aria-hidden="true"></i>{{ recoveryKeySavedWith==='copy' ? 'Copied' : 'Copy key' }}
+          </button>
+          <button class="btn btn-sm btn-outline-primary" type="button" :disabled="busy" @click="downloadKey">
+            <i class="bi bi-download me-1" aria-hidden="true"></i>Download .txt
+          </button>
+        </div>
+        <p v-if="recoveryKeySavedWith" class="small text-success mb-2" role="status">
+          {{ recoveryKeySavedWith==='copy' ? 'Recovery key copied.' : 'Recovery key downloaded.' }} Store it somewhere private and separate from this account.
+        </p>
+        <label class="d-flex align-items-start gap-1">
+          <input v-model="recoveryConfirmed" class="mt-1" type="checkbox" :disabled="!recoveryKeySavedWith">
+          <span>I’ve stored my recovery key somewhere safe.</span>
+        </label>
       </div>
       <div class="d-flex gap-2">
         <button class="btn btn-primary" :disabled="busy" @click="login">Sign in</button>
-        <button class="btn btn-outline-primary" :disabled="busy" @click="register">Create sync account</button>
+        <button class="btn btn-outline-primary" :disabled="busy || (recoveryKey && !recoveryConfirmed)" @click="register">Create sync account</button>
         <button class="btn btn-outline-secondary" :disabled="busy" @click="requestEnrollment">Add this device</button>
       </div>
       <div v-if="enrollment" class="alert alert-info mt-3"><strong>Approval code: {{ enrollment.approvalCode }}</strong>
@@ -21,6 +36,7 @@
         <button class="btn btn-sm btn-primary" @click="completeEnrollment">I approved it</button></div>
       <div class="mt-3"><label class="form-label">Verification token</label>
         <div class="input-group"><input v-model.trim="verificationToken" class="form-control"><button class="btn btn-outline-secondary" @click="verify">Verify</button></div>
+        <button class="btn btn-link btn-sm px-0 mt-1" :disabled="busy || !email" @click="resendVerification">Resend confirmation email</button>
       </div>
     </div>
     <div v-else>
@@ -57,11 +73,12 @@
 
 <script>
 import { syncAccountClient } from "../sync/syncAccountSession";
+import { copyRecoveryKey,downloadRecoveryKey } from "../sync/recoveryKeyExport";
 import { loadSyncConflicts,loadSyncHistory } from "../repositories/syncOutboxRepository";
 import { restoreSyncRevision } from "../sync/syncRecovery";
 export default {
   name:"syncAccountPanel",
-  data:()=>({email:"",password:"",deviceName:navigator.userAgent.includes("Electron")?"Desktop":"Browser",recoveryKey:null,
+  data:()=>({email:"",password:"",deviceName:navigator.userAgent.includes("Electron")?"Desktop":"Browser",recoveryKey:null,recoveryKeySavedWith:null,
     prepared:null,recoveryConfirmed:false,verificationToken:"",session:null,devices:[],enrollment:null,enrollments:[],conflicts:[],history:[],
     busy:false,message:"",error:false}),
   methods:{
@@ -71,7 +88,14 @@ export default {
       this.recoveryKey=this.prepared.recoveryKey;this.message="Save the recovery key, confirm it, then select Create sync account again.";return;}
       await syncAccountClient.register({email:this.email,password:this.password,...this.prepared,recoveryConfirmed:this.recoveryConfirmed});
       this.message="Account created. Check your email, then paste the verification token above.";});},
+    async copyKey(){await this.run(async()=>{await copyRecoveryKey(this.recoveryKey);this.recoveryKeySavedWith="copy";
+      this.message="Recovery key copied. Store it somewhere private and separate from this account.";});},
+    downloadKey(){try{downloadRecoveryKey(this.recoveryKey,this.email);this.recoveryKeySavedWith="download";this.error=false;
+      this.message="Recovery key downloaded. Store the file somewhere private and separate from this account.";}
+      catch(error){this.error=true;this.message=error.message;}},
     async verify(){await this.run(async()=>{await syncAccountClient.verify(this.verificationToken);this.message="Email verified. You can now sign in.";});},
+    async resendVerification(){await this.run(async()=>{await syncAccountClient.resendVerification(this.email);
+      this.message="If that account is awaiting verification, a new confirmation email has been sent.";});},
     async login(){await this.run(async()=>{this.session=await syncAccountClient.login({email:this.email,password:this.password,
       deviceName:this.deviceName,deviceId:localStorage.getItem("weektodo.sync.deviceId") || undefined});
       localStorage.setItem("weektodo.sync.deviceId",this.session.deviceId);this.password="";await this.loadDevices();

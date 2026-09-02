@@ -15,6 +15,13 @@ describe("sync account client",()=>{
       .rejects.toThrow("RECOVERY_KEY_CONFIRMATION_REQUIRED");
     expect(client.fetch).not.toHaveBeenCalled();
   });
+  it("requests a new confirmation email without exposing account state",async()=>{
+    const fetchImplementation=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({accepted:true})});
+    const client=new SyncAccountClient({baseUrl:"https://planner.example",fetchImplementation});
+    await expect(client.resendVerification("user@example.com")).resolves.toEqual({accepted:true});
+    expect(fetchImplementation).toHaveBeenCalledWith("https://planner.example/v1/auth/verification/resend",
+      expect.objectContaining({method:"POST",body:JSON.stringify({email:"user@example.com"})}));
+  });
   it("refreshes an expiring session with the secure cookie and stores the rotated access token",async()=>{
     const fetchImplementation=vi.fn().mockResolvedValue({ok:true,status:200,json:async()=>({
       accessToken:"rotated-token",accessExpiresAt:Date.now()+900000})});

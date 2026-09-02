@@ -9,8 +9,6 @@
         </div>
         <div class="modal-body px-0" style="display: flex">
           <ul class="nav nav-tabs" id="confTab" role="tablist" style="display: none">
-            <li class="nav-item" role="presentation"><button class="nav-link" id="config-local-sync-tab" data-bs-toggle="tab"
-              data-bs-target="#config-local-sync" role="tab">Local network sync</button></li>
             <li class="nav-item" role="presentation">
               <button v-if="syncEnabled" class="nav-link" id="config-sync-tab" data-bs-toggle="tab" data-bs-target="#config-sync" role="tab">
                 Sync
@@ -305,7 +303,6 @@
               </div>
             </div>
             <div v-if="syncEnabled" class="tab-pane fade" id="config-sync"><sync-account-panel /></div>
-            <div class="tab-pane fade" id="config-local-sync"><local-network-sync-panel @export-recovery="exportData" /></div>
             <div class="tab-pane fade" id="config-language">
               <div class="d-flex flex-column mt-2 h-100">
                 <label for="language" class="form-label">{{ $t("settings.language") }}:</label>
@@ -352,11 +349,10 @@ import notifications from "../helpers/notifications";
 import { Modal } from "bootstrap";
 import desktop, { isDesktop } from "../helpers/desktop";
 import syncAccountPanel from "./syncAccountPanel";
-import localNetworkSyncPanel from "./localNetworkSyncPanel";
 
 export default {
   name: "configModal",
-  components: { toastMessage, linkList, syncAccountPanel,localNetworkSyncPanel },
+  components: { toastMessage, linkList, syncAccountPanel },
   props: {
     configProp: { required: true },
   },

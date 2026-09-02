@@ -8,11 +8,13 @@ const baseEnv = { DATABASE_URL: "postgresql://example.invalid/weektodo",
 describe("server runtime boundary", () => {
   it("validates production-only settings without opening a listener", () => {
     expect(() => resolveRuntimeConfig({ ...baseEnv, NODE_ENV: "production" }))
-      .toThrow("VERIFICATION_WEBHOOK_URL is required in production");
+      .toThrow("RESEND_API_KEY is required in production");
     const config = resolveRuntimeConfig({ ...baseEnv, NODE_ENV: "production",
-      PUBLIC_APP_URL: "https://planner.example.com", VERIFICATION_WEBHOOK_URL: "https://mailer.example.com/send",
+      PUBLIC_APP_URL: "https://planner.example.com", RESEND_API_KEY: "re_secret",
+      RESEND_FROM_EMAIL: "WeekToDo <accounts@planner.example.com>",
       DATABASE_SSL: "true", DATABASE_SSL_REJECT_UNAUTHORIZED: "true" });
     expect(config).toMatchObject({ production: true, publicAppUrl: "https://planner.example.com",
+      resendApiKey:"re_secret",resendFromEmail:"WeekToDo <accounts@planner.example.com>",
       databaseSsl: true, databaseSslRejectUnauthorized: true });
   });
 

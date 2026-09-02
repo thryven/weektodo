@@ -101,7 +101,6 @@ export async function buildServer({ identityRepository = new InMemoryIdentityRep
       } } } } };
 
   app.get("/health/live", async () => ({ status: "ok" }));
-  app.get("/.well-known/weektodo-sync",async()=>({service:"weektodo-sync",protocolVersion:1,name:"WeekToDo"}));
   app.get("/health/ready",async(_request,reply)=>{const status=await readinessCheck();
     if(!status.ready)return reply.code(503).send({status:"not_ready",reason:status.reason});return {status:"ready"};});
 
