@@ -1,6 +1,7 @@
 export default {
     configList(vue) {
         return [
+            ...(vue.isElectron() ? [{ name: "Google Tasks", ico: "bi-google", linktype: "tagId", link: "config-google-tab" }] : []),
             ...(import.meta.env.VITE_SYNC_ENABLED === "true" ? [{
               name: "Sync", ico: "bi-cloud", linktype: "tagId", link: "config-sync-tab",
             }] : []),

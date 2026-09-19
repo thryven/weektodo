@@ -9,6 +9,7 @@
         </div>
         <div class="modal-body px-0" style="display: flex">
           <ul class="nav nav-tabs" id="confTab" role="tablist" style="display: none">
+            <li v-if="isElectron()" class="nav-item" role="presentation"><button class="nav-link" id="config-google-tab" data-bs-toggle="tab" data-bs-target="#config-google" role="tab">Google Tasks</button></li>
             <li class="nav-item" role="presentation">
               <button v-if="syncEnabled" class="nav-link" id="config-sync-tab" data-bs-toggle="tab" data-bs-target="#config-sync" role="tab">
                 Sync
@@ -302,6 +303,7 @@
                 </div>
               </div>
             </div>
+            <div v-if="isElectron()" class="tab-pane fade" id="config-google"><google-tasks-panel /></div>
             <div v-if="syncEnabled" class="tab-pane fade" id="config-sync"><sync-account-panel /></div>
             <div class="tab-pane fade" id="config-language">
               <div class="d-flex flex-column mt-2 h-100">
@@ -348,11 +350,12 @@ import configList from "./configList";
 import notifications from "../helpers/notifications";
 import { Modal } from "bootstrap";
 import desktop, { isDesktop } from "../helpers/desktop";
+import googleTasksPanel from "./googleTasksPanel";
 import syncAccountPanel from "./syncAccountPanel";
 
 export default {
   name: "configModal",
-  components: { toastMessage, linkList, syncAccountPanel },
+  components: { toastMessage, linkList, syncAccountPanel, googleTasksPanel },
   props: {
     configProp: { required: true },
   },

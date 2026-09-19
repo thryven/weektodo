@@ -24,3 +24,8 @@ pnpm-debug.log*
 
 .agents/
 .pnpm-store/
+
+# Google Desktop OAuth configuration (main process only)
+.env.google-tasks
+google-oauth.json
+client_secret_*.json

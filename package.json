@@ -20,6 +20,7 @@
     "lint": "eslint .",
     "electron:build": "vite build --mode electron && electron-builder",
     "electron:serve": "vite --mode electron",
+    "electron:google": "node --env-file-if-exists=.env.google-tasks node_modules/vite/bin/vite.js --mode electron",
     "electron:smoke": "node scripts/electron-smoke.mjs",
     "electron:verify": "vite build --mode electron && electron-builder --dir --win && node scripts/electron-smoke.mjs",
     "postinstall": "electron-builder install-app-deps",

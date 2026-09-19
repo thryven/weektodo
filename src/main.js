@@ -51,6 +51,9 @@ Sentry.init({
   // },
 });
 
+import { startGoogleTasks } from "./googleTasks/service";
+startGoogleTasks(store);
+
 const app = createApp(App);
 
 app.use(store);

@@ -5,9 +5,11 @@ function signalSyncWhenCommitted(transaction) {
 
 export default {
     open() {
-        var req = indexedDB.open('weekToDo', 7);
+        var req = indexedDB.open('weekToDo', 8);
         req.onupgradeneeded = function (event) {
             var db = event.target.result;
+            if (!db.objectStoreNames.contains("google_sync_state")) db.createObjectStore("google_sync_state");
+            if (!db.objectStoreNames.contains("google_sync_queue")) db.createObjectStore("google_sync_queue", { keyPath: "entityId" });
             if (!db.objectStoreNames.contains("todo_lists")) {
                 db.createObjectStore('todo_lists', {autoIncrement: false});
             }
@@ -85,17 +87,25 @@ export default {
         return req;
     },
     updateWithOutbox(db, table, id, value, operations) {
-        const tx = db.transaction([table, "sync_outbox"], "readwrite");
+        const tx = db.transaction([table, "sync_outbox", "google_sync_queue"], "readwrite");
         tx.objectStore(table).put(JSON.parse(JSON.stringify(value)), id);
         const outbox = tx.objectStore("sync_outbox");
-        operations.forEach((operation) => outbox.put(JSON.parse(JSON.stringify(operation))));
+        operations.forEach((operation) => {
+            outbox.put(JSON.parse(JSON.stringify(operation)));
+            if (operation.entityType === "task" && tx.objectStoreNames.contains("google_sync_queue"))
+                tx.objectStore("google_sync_queue").put(JSON.parse(JSON.stringify(operation)));
+        });
         return signalSyncWhenCommitted(tx);
     },
     deleteWithOutbox(db, table, id, operations) {
-        const tx = db.transaction([table, "sync_outbox"], "readwrite");
+        const tx = db.transaction([table, "sync_outbox", "google_sync_queue"], "readwrite");
         tx.objectStore(table).delete(id);
         const outbox = tx.objectStore("sync_outbox");
-        operations.forEach((operation) => outbox.put(JSON.parse(JSON.stringify(operation))));
+        operations.forEach((operation) => {
+            outbox.put(JSON.parse(JSON.stringify(operation)));
+            if (operation.entityType === "task" && tx.objectStoreNames.contains("google_sync_queue"))
+                tx.objectStore("google_sync_queue").put(JSON.parse(JSON.stringify(operation)));
+        });
         return signalSyncWhenCommitted(tx);
     },
     listOutbox(db) {
@@ -124,7 +134,8 @@ export default {
     importBackup(db,data) {
         const primary=["todo_lists","repeating_events","repeating_events_by_date"];
         const sync=["sync_outbox","sync_metadata","sync_history","sync_conflicts","sync_tombstones","sync_local_documents"];
-        const tx=db.transaction([...primary,...sync],"readwrite");[...primary,...sync].forEach((name)=>tx.objectStore(name).clear());
+        const google=["google_sync_state","google_sync_queue"];
+        const tx=db.transaction([...primary,...sync,...google],"readwrite");[...primary,...sync,...google].forEach((name)=>tx.objectStore(name).clear());
         Object.entries(data.todoLists||{}).forEach(([key,value])=>tx.objectStore("todo_lists").put(JSON.parse(JSON.stringify(value)),key));
         Object.entries(data.repeating_events||{}).forEach(([key,value])=>tx.objectStore("repeating_events").put(JSON.parse(JSON.stringify(value)),key));
         Object.entries(data.repeating_events_by_date||{}).forEach(([key,value])=>

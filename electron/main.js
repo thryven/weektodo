@@ -5,7 +5,10 @@ import AutoLaunch from "auto-launch";
 import Config from "electron-config";
 import dgram from "node:dgram";
 
+import { GoogleTasksService, registerGoogleTasksIpc } from "./googleTasks";
+
 const config = new Config();
+const googleTasks = new GoogleTasksService({ app, safeStorage, shell, config });
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 
@@ -63,6 +66,9 @@ async function createWindow() {
   Object.assign(options, config.get("winBounds"));
   mainWindow = new BrowserWindow(options);
   mainWindow.removeMenu();
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (url !== mainWindow.webContents.getURL()) event.preventDefault();
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (isAllowedExternalUrl(url)) shell.openExternal(url);
@@ -88,6 +94,7 @@ async function createWindow() {
 }
 
 function registerIpcHandlers() {
+  registerGoogleTasksIpc({ ipcMain, getWindow: () => mainWindow, service: googleTasks });
   ipcMain.on("show-current-window", (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (config.get("isMaximized")) window.maximize();

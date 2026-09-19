@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("weekToDoDesktop", {
+  googleTasks: {
+    status: () => ipcRenderer.invoke("google-tasks:status"),
+    signIn: () => ipcRenderer.invoke("google-tasks:signIn"),
+    disconnect: () => ipcRenderer.invoke("google-tasks:disconnect"),
+    lists: () => ipcRenderer.invoke("google-tasks:lists"),
+    tasks: (id) => ipcRenderer.invoke("google-tasks:tasks", id),
+    write: (request) => ipcRenderer.invoke("google-tasks:write", request),
+  },
   showCurrentWindow: () => ipcRenderer.send("show-current-window"),
   isWindowVisible: () => ipcRenderer.sendSync("is-window-visible"),
   matchOpenOnStartup: (enabled) => ipcRenderer.send("match-open-on-startup", Boolean(enabled)),
